@@ -37,10 +37,10 @@ namespace AdPublisher
         /// <returns></returns>
         public APIGatewayProxyResponse FunctionHandler(APIGatewayProxyRequest input, ILambdaContext context)
         {
-            Ad adBody = JsonSerializer.Deserialize<Ad>(input.Body);
-
             if (input.HttpMethod == "POST")
             {
+                Ad adBody = JsonSerializer.Deserialize<Ad>(input.Body);
+
                 try
                 {
                     // POPULATE PUBLISHER ID
@@ -77,6 +77,7 @@ namespace AdPublisher
             }
             else if (input.HttpMethod == "PATCH")
             {
+                Ad adBody = JsonSerializer.Deserialize<Ad>(input.Body);
                 
                 try
                 {
@@ -95,11 +96,11 @@ namespace AdPublisher
                         {
                             exists = true;
 
-                            Console.WriteLine($"Ad {adBody.Id} exists");
+                            Console.WriteLine($"Ad '{adBody.Id}' exists");
 
                             if (row.GetField("publisherId").StringValue.CompareTo(adBody.PublisherId) == 0)
                             {
-                                Console.WriteLine($"Valid owner. Ad {adBody.Id} belongs to publisher {adBody.PublisherId}");
+                                Console.WriteLine($"Valid owner. Ad '{adBody.Id}' belongs to publisher '{adBody.PublisherId}'");
                                 owner = true;
                             }
                         }
@@ -116,7 +117,7 @@ namespace AdPublisher
                     {
                         return new APIGatewayProxyResponse
                         {
-                            Body = $"Ad {adBody.Id} does not exist.",
+                            Body = $"Ad '{adBody.Id}' does not exist.",
                             StatusCode = 400
                         };
                     }
@@ -125,7 +126,7 @@ namespace AdPublisher
                     {
                         return new APIGatewayProxyResponse
                         {
-                            Body = $"Publisher {adBody.PublisherId} is not the owner of Ad {adBody.Id}",
+                            Body = $"Publisher '{adBody.PublisherId}' is not the owner of Ad '{adBody.Id}'",
                             StatusCode = 400
                         };
                     }
@@ -139,6 +140,75 @@ namespace AdPublisher
                 catch (Exception ex)
                 {
                     Console.WriteLine("patching error: " + ex);
+                    return new APIGatewayProxyResponse
+                    {
+                        Body = ex.Message,
+                        StatusCode = 500
+                    };
+                }
+            }
+            else if (input.HttpMethod == "DELETE")
+            {
+                try
+                {
+                    // POPULATE PUBLISHER ID AND AD ID
+                    var publisher = input.QueryStringParameters["publisher"];
+                    var id = input.QueryStringParameters["id"];
+
+                    bool owner = false, exists = false;
+                    driver.Execute(t =>
+                    {
+                        // CHECK IF AD BELONGS TO PUBLISHER
+                        var result = t.Execute($"SELECT * FROM Ads WHERE adId = '{id}'");
+
+                        foreach (var row in result)
+                        {
+                            exists = true;
+
+                            Console.WriteLine($"Ad '{id}' exists");
+
+                            if (row.GetField("publisherId").StringValue.CompareTo(publisher) == 0)
+                            {
+                                Console.WriteLine($"Valid owner. Ad '{id}' belongs to publisher '{publisher}'");
+                                owner = true;
+                            }
+                        }
+
+                        // IF SO, DELETE AD
+                        if (owner && exists)
+                        {
+                            t.Execute($"DELETE FROM Ads WHERE adId = '{id}'");
+                            Console.WriteLine($"Ad '{id}' removed");
+                        }
+                    });
+
+                    if (!exists)
+                    {
+                        return new APIGatewayProxyResponse
+                        {
+                            Body = $"Ad '{id}' does not exist.",
+                            StatusCode = 400
+                        };
+                    }
+
+                    if (!owner)
+                    {
+                        return new APIGatewayProxyResponse
+                        {
+                            Body = $"Publisher '{publisher}' is not the owner of Ad '{id}'",
+                            StatusCode = 400
+                        };
+                    }
+
+                    return new APIGatewayProxyResponse
+                    {
+                        Body = $"Ad '{id}' removed successfully.",
+                        StatusCode = 200
+                    };
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("delete error: " + ex.Message);
                     return new APIGatewayProxyResponse
                     {
                         Body = ex.Message,

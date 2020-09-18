@@ -56,7 +56,16 @@ namespace Cdk
                 RequestParameters = patchParameters
             });
 
-            
+            // DELETE 
+            var deleteAdIntegration = new LambdaIntegration(publisherHandler);
+
+            var deleteParameters = new Dictionary<string, bool>();
+            deleteParameters.Add("method.request.querystring.id", true);
+            deleteParameters.Add("method.request.querystring.publisher", true);
+
+            api.Root.AddMethod("DELETE", deleteAdIntegration, new MethodOptions{
+                RequestParameters = deleteParameters
+            });
         }
     }
 }
