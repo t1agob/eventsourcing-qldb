@@ -14,4 +14,8 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-
+# Visual Studio specific directories and files
+.vs
+bin
+obj
+*.sln
