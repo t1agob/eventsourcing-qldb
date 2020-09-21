@@ -39,29 +39,95 @@ namespace AdReader
                 {
                     var adId = input.PathParameters["adId"];
 
-                    Ad ad = new Ad();
-
-                    driver.Execute(txn =>
+                    try
                     {
-                        IResult result = txn.Execute($"SELECT * FROM Ads WHERE publisherId = '{publisher}' and adId = '{adId}'");
-
-
-                        foreach (var row in result)
+                        if (input.QueryStringParameters["versions"] == "true")
                         {
-                            ad.Id = row.GetField("adId").StringValue;
-                            ad.PublisherId = row.GetField("publisherId").StringValue;
-                            ad.Title = row.GetField("adTitle").StringValue;
-                            ad.Description = row.GetField("adDescription").StringValue;
-                            ad.Currency = row.GetField("currency").StringValue;
-                            ad.Price = row.GetField("price").DecimalValue;
-                        }
-                    });
+                            List<AdHistory> adWithVersion = new List<AdHistory>();
 
-                    return new APIGatewayProxyResponse
+                            driver.Execute(txn =>
+                            {
+                                IResult result = txn.Execute($"SELECT h.data.adId, h.data.publisherId, h.data.adTitle, h.data.adDescription, h.data.price, h.data.currency, h.metadata.version, h.metadata.txTime FROM history(Ads) AS h WHERE h.data.adId = '{adId}' and h.data.publisherId = '{publisher}'");
+
+                                foreach (var row in result)
+                                {
+                                    AdHistory ad = new AdHistory()
+                                    {
+                                        Id = row.GetField("adId").StringValue,
+                                        PublisherId = row.GetField("publisherId").StringValue,
+                                        Title = row.GetField("adTitle").StringValue,
+                                        Description = row.GetField("adDescription").StringValue,
+                                        Currency = row.GetField("currency").StringValue,
+                                        Price = row.GetField("price").DecimalValue,
+                                        Version = row.GetField("version").IntValue,
+                                        Timestamp = row.GetField("txTime").TimestampValue.ToString()
+                                    };
+
+                                    adWithVersion.Add(ad);
+
+                                }
+                            });
+
+
+                            return new APIGatewayProxyResponse
+                            {
+                                Body = JsonSerializer.Serialize(adWithVersion, typeof(List<AdHistory>)),
+                                StatusCode = 200
+                            };
+                        }
+                        else
+                        {
+                            Ad ad = new Ad();
+
+                            driver.Execute(txn =>
+                            {
+                                IResult result = txn.Execute($"SELECT * FROM Ads WHERE publisherId = '{publisher}' and adId = '{adId}'");
+
+
+                                foreach (var row in result)
+                                {
+                                    ad.Id = row.GetField("adId").StringValue;
+                                    ad.PublisherId = row.GetField("publisherId").StringValue;
+                                    ad.Title = row.GetField("adTitle").StringValue;
+                                    ad.Description = row.GetField("adDescription").StringValue;
+                                    ad.Currency = row.GetField("currency").StringValue;
+                                    ad.Price = row.GetField("price").DecimalValue;
+                                }
+                            });
+
+                            return new APIGatewayProxyResponse
+                            {
+                                Body = JsonSerializer.Serialize(ad, typeof(Ad)),
+                                StatusCode = 200
+                            };
+                        }
+                    }
+                    catch (NullReferenceException)
                     {
-                        Body = JsonSerializer.Serialize(ad, typeof(Ad)),
-                        StatusCode = 200
-                    };
+                        Ad ad = new Ad();
+
+                        driver.Execute(txn =>
+                        {
+                            IResult result = txn.Execute($"SELECT * FROM Ads WHERE publisherId = '{publisher}' and adId = '{adId}'");
+
+
+                            foreach (var row in result)
+                            {
+                                ad.Id = row.GetField("adId").StringValue;
+                                ad.PublisherId = row.GetField("publisherId").StringValue;
+                                ad.Title = row.GetField("adTitle").StringValue;
+                                ad.Description = row.GetField("adDescription").StringValue;
+                                ad.Currency = row.GetField("currency").StringValue;
+                                ad.Price = row.GetField("price").DecimalValue;
+                            }
+                        });
+
+                        return new APIGatewayProxyResponse
+                        {
+                            Body = JsonSerializer.Serialize(ad, typeof(Ad)),
+                            StatusCode = 200
+                        };
+                    }
 
                 }
                 catch (KeyNotFoundException) // RETRIEVE ALL ADS FROM PUBLISHER

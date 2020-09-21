@@ -62,9 +62,14 @@ namespace Cdk
             var getAllIntegration = new LambdaIntegration(readerHandler);
             adRoot.AddMethod("GET", getAllIntegration);
 
-            // GET /publisher/{publisher}/ad/{adId}
+            var getParameters = new Dictionary<string, bool>();
+            getParameters.Add("method.request.querystring.versions", false);
+
+            // GET /publisher/{publisher}/ad/{adId}?versions=true
             var getAdIntegration = new LambdaIntegration(readerHandler);
-            adOperationsResource.AddMethod("GET", getAdIntegration);
+            adOperationsResource.AddMethod("GET", getAdIntegration, new MethodOptions{
+                RequestParameters = getParameters
+            });
         }
     }
 }
