@@ -1,6 +1,7 @@
+﻿using System;
 using System.Text.Json.Serialization;
 
-namespace AdPublisher
+namespace AdReader.Models
 {
     public class Ad
     {
@@ -17,5 +18,4 @@ namespace AdPublisher
         [JsonPropertyName("currency")]
         public string Currency { get; set; }
     }
-    
 }

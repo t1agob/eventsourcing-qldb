@@ -26,6 +26,14 @@ namespace Cdk
                 Role = lambdaRole,
                 Timeout = Duration.Seconds(15)
             });
+
+            var readerHandler = new Function(this, "ReaderHandler", new FunctionProps{
+                Runtime = Runtime.DOTNET_CORE_3_1,
+                Code = Code.FromAsset("../backend/src/AdReader/bin/Debug/netcoreapp3.1/publish"),
+                Handler = "AdReader::AdReader.Function::FunctionHandler",
+                Role = lambdaRole,
+                Timeout = Duration.Seconds(15)
+            });
         
             var api = new RestApi(this, "AdsAPI", new RestApiProps{
                 RestApiName = "Ads API",
@@ -33,39 +41,30 @@ namespace Cdk
 
             });
 
-            
-            // POST
+            var publisherRoot = api.Root.AddResource("publisher");
+            var publisherResource = publisherRoot.AddResource("{publisher}");
+            var adRoot = publisherResource.AddResource("ad");
+            var adOperationsResource = adRoot.AddResource("{adId}");
+
+            // POST /publisher/{publisher}/ad
             var createAdIntegration = new LambdaIntegration(publisherHandler);
-            
-            var postParameters = new Dictionary<string, bool>();
-            postParameters.Add("method.request.querystring.publisher", true);
+            adRoot.AddMethod("POST", createAdIntegration);
 
-            api.Root.AddMethod("POST", createAdIntegration, new MethodOptions{
-                RequestParameters = postParameters
-            });
-
-            // PATCH
+            // PATCH /publisher/{publisher}/ad/{adId}
             var updateAdIntegration = new LambdaIntegration(publisherHandler);
+            adOperationsResource.AddMethod("PATCH", updateAdIntegration);
 
-            var patchParameters = new Dictionary<string, bool>();
-            patchParameters.Add("method.request.querystring.id", true);
-            patchParameters.Add("method.request.querystring.publisher", true);
-
-            api.Root.AddMethod("PATCH", updateAdIntegration, new MethodOptions
-            {
-                RequestParameters = patchParameters
-            });
-
-            // DELETE 
+            // DELETE /publisher/{publisher}/ad/{adId}
             var deleteAdIntegration = new LambdaIntegration(publisherHandler);
+            adOperationsResource.AddMethod("DELETE", deleteAdIntegration);
 
-            var deleteParameters = new Dictionary<string, bool>();
-            deleteParameters.Add("method.request.querystring.id", true);
-            deleteParameters.Add("method.request.querystring.publisher", true);
+            // GET /publisher/{publisher}/ad/*
+            var getAllIntegration = new LambdaIntegration(readerHandler);
+            adRoot.AddMethod("GET", getAllIntegration);
 
-            api.Root.AddMethod("DELETE", deleteAdIntegration, new MethodOptions{
-                RequestParameters = deleteParameters
-            });
+            // GET /publisher/{publisher}/ad/{adId}
+            var getAdIntegration = new LambdaIntegration(readerHandler);
+            adOperationsResource.AddMethod("GET", getAdIntegration);
         }
     }
 }

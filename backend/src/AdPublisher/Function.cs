@@ -44,7 +44,7 @@ namespace AdPublisher
                 try
                 {
                     // POPULATE PUBLISHER ID
-                    adBody.PublisherId = input.QueryStringParameters["publisher"];
+                    adBody.PublisherId = input.PathParameters["publisher"];
 
                     // GENERATE NEW AD ID 
                     adBody.Id = GenerateUniqueAdId();
@@ -53,6 +53,9 @@ namespace AdPublisher
 
                     driver.Execute(t =>
                     {
+                        // FORCE PRICE TO BE A 2 PLACE DECIMAL
+                        adBody.Price = Convert.ToDecimal(string.Format("{0:F2}", adBody.Price));
+
                         // INSERT AD INTO QLDB
                         var doc = IonLoader.Default.Load(JsonSerializer.Serialize(adBody, typeof(Ad)));
                         t.Execute("INSERT INTO Ads ?", doc);
@@ -78,12 +81,12 @@ namespace AdPublisher
             else if (input.HttpMethod == "PATCH")
             {
                 Ad adBody = JsonSerializer.Deserialize<Ad>(input.Body);
-                
+
                 try
                 {
                     // POPULATE PUBLISHER ID AND AD ID
-                    adBody.PublisherId = input.QueryStringParameters["publisher"];
-                    adBody.Id = input.QueryStringParameters["id"];
+                    adBody.PublisherId = input.PathParameters["publisher"];
+                    adBody.Id = input.PathParameters["adId"];
 
 
                     bool owner = false, exists = false;
@@ -108,6 +111,9 @@ namespace AdPublisher
                         // IF SO, UPDATE AD
                         if (owner && exists)
                         {
+                            // FORCE PRICE TO BE A 2 PLACE DECIMAL
+                            adBody.Price = Convert.ToDecimal(string.Format("{0:F2}", adBody.Price));
+
                             t.Execute($"UPDATE Ads SET adTitle = '{adBody.Title}', adDescription = '{adBody.Description}', price = {adBody.Price} WHERE adId = '{adBody.Id}'");
                             Console.WriteLine($"Ad '{adBody.Id}' updated");
                         }
@@ -152,8 +158,8 @@ namespace AdPublisher
                 try
                 {
                     // POPULATE PUBLISHER ID AND AD ID
-                    var publisher = input.QueryStringParameters["publisher"];
-                    var id = input.QueryStringParameters["id"];
+                    var publisher = input.PathParameters["publisher"];
+                    var id = input.PathParameters["adId"];
 
                     bool owner = false, exists = false;
                     driver.Execute(t =>
