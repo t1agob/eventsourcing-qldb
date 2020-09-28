@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text.Json.Serialization;
+using System.Collections.Generic;
 
 namespace AdReader.Models
 {
@@ -17,5 +18,13 @@ namespace AdReader.Models
         public decimal Price { get; set; }
         [JsonPropertyName("currency")]
         public string Currency { get; set; }
+        [JsonPropertyName("category")]
+        public string Category { get; set; }
+        [JsonPropertyName("timestamp")]
+        public string Timestamp { get; set; }
+        [JsonPropertyName("tags")]
+        public List<string> Tags { get; set; }
+        [JsonPropertyName("version")]
+        public int? Version { get; set; }
     }
 }

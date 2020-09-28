@@ -19,3 +19,6 @@
 bin
 obj
 *.sln
+backend/src/.DS_Store
+backend/src/StreamProcessor/.DS_Store
+cdk/.DS_Store

@@ -18,6 +18,10 @@ namespace AdPublisher
 {
     public class Function
     {
+        static string tableName = "Ads";
+        static List<string> indexes = new List<string> { "adId", "publisherId" };
+        static string adLedger = Environment.GetEnvironmentVariable("ledgerName");
+
         static AmazonQLDBSessionConfig amazonQLDBSessionConfig = new AmazonQLDBSessionConfig()
         {
             RetryMode = Amazon.Runtime.RequestRetryMode.Standard
@@ -26,7 +30,7 @@ namespace AdPublisher
         static IQldbDriver driver = QldbDriver.Builder()
             .WithQLDBSessionConfig(amazonQLDBSessionConfig)
             .WithRetryLogging()
-            .WithLedger("advertisementLedger")
+            .WithLedger(adLedger)
             .Build();
 
         /// <summary>
@@ -39,6 +43,7 @@ namespace AdPublisher
         {
             if (input.HttpMethod == "POST")
             {
+                checkifTableExists(tableName, indexes);
                 Ad adBody = JsonSerializer.Deserialize<Ad>(input.Body);
 
                 try
@@ -58,7 +63,7 @@ namespace AdPublisher
 
                         // INSERT AD INTO QLDB
                         var doc = IonLoader.Default.Load(JsonSerializer.Serialize(adBody, typeof(Ad)));
-                        t.Execute("INSERT INTO Ads ?", doc);
+                        var result = t.Execute("INSERT INTO Ads ?", doc);
                     });
 
                     return new APIGatewayProxyResponse
@@ -114,7 +119,7 @@ namespace AdPublisher
                             // FORCE PRICE TO BE A 2 PLACE DECIMAL
                             adBody.Price = Convert.ToDecimal(string.Format("{0:F2}", adBody.Price));
 
-                            t.Execute($"UPDATE Ads SET adTitle = '{adBody.Title}', adDescription = '{adBody.Description}', price = {adBody.Price} WHERE adId = '{adBody.Id}'");
+                            t.Execute($"UPDATE Ads SET adTitle = '{adBody.Title}', adDescription = '{adBody.Description}', price = {adBody.Price}, category = '{adBody.Category}', tags = '{buildTags(adBody.Tags)}' WHERE adId = '{adBody.Id}'");
                             Console.WriteLine($"Ad '{adBody.Id}' updated");
                         }
                     });
@@ -231,6 +236,49 @@ namespace AdPublisher
                     StatusCode = 500
                 };
             }
+        }
+
+        private object buildTags(List<string> tags)
+        {
+            string result = "";
+
+            foreach (var item in tags)
+            {
+                if(result == "")
+                {
+                    result += item;
+                }
+                else
+                {
+                    result += $", {item}";
+                }
+            }
+
+            return result;
+        }
+
+        private void checkifTableExists(string tableName, List<string> indexes)
+        {
+            driver.Execute(t =>
+            {
+                try
+                {
+                    Console.WriteLine("Checking if table exists");
+                    // CHECK IF TABLE EXISTS
+                    t.Execute($"SELECT COUNT(1) FROM {tableName}");
+                }
+                catch(Exception)
+                {
+                    // CREATE TABLE AND INDEXES
+                    Console.WriteLine($"Creating table {tableName}");
+                    t.Execute($"CREATE TABLE {tableName}");
+
+                    foreach (var index in indexes)
+                    {
+                        t.Execute($"CREATE INDEX ON {tableName}({index})");
+                    }
+                }
+            });
         }
 
         private static string GenerateUniqueAdId()

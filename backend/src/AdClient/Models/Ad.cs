@@ -1,9 +1,9 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace AdReader.Models
+namespace AdClient.Models
 {
-    public class AdHistory
+    public class Ad
     {
         [JsonPropertyName("adId")]
         public string Id { get; set; }
@@ -17,9 +17,9 @@ namespace AdReader.Models
         public decimal Price { get; set; }
         [JsonPropertyName("currency")]
         public string Currency { get; set; }
-        [JsonPropertyName("timestamp")]
-        public string Timestamp { get; set; }
-        [JsonPropertyName("version")]
-        public int Version { get; set; }
+        [JsonPropertyName("category")]
+        public string Category { get; set; }
+        //[JsonPropertyName("tags")]
+        //public List<string> Tags { get; set; }
     }
 }

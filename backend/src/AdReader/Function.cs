@@ -17,10 +17,12 @@ namespace AdReader
 {
     public class Function
     {
+        static string adLedger = Environment.GetEnvironmentVariable("ledgerName");
+
         static AmazonQLDBSessionConfig amazonQLDBSessionConfig = new AmazonQLDBSessionConfig();
         static IQldbDriver driver = QldbDriver.Builder()
             .WithQLDBSessionConfig(amazonQLDBSessionConfig)
-            .WithLedger("advertisementLedger")
+            .WithLedger(adLedger)
             .Build();
 
         /// <summary>
@@ -43,37 +45,48 @@ namespace AdReader
                     {
                         if (input.QueryStringParameters["versions"] == "true")
                         {
-                            List<AdHistory> adWithVersion = new List<AdHistory>();
+                            List<Ad> adWithVersion = new List<Ad>();
 
                             driver.Execute(txn =>
                             {
-                                IResult result = txn.Execute($"SELECT h.data.adId, h.data.publisherId, h.data.adTitle, h.data.adDescription, h.data.price, h.data.currency, h.metadata.version, h.metadata.txTime FROM history(Ads) AS h WHERE h.data.adId = '{adId}' and h.data.publisherId = '{publisher}'");
+                                IResult result = txn.Execute($"SELECT h.data.adId, h.data.publisherId, h.data.adTitle, h.data.category, h.data.adDescription, h.data.price, h.data.currency, h.metadata.version, h.metadata.txTime FROM history(Ads) AS h WHERE h.data.adId = '{adId}' and h.data.publisherId = '{publisher}'");
 
                                 foreach (var row in result)
                                 {
-                                    AdHistory ad = new AdHistory()
+                                    Ad ad = new Ad()
                                     {
                                         Id = row.GetField("adId").StringValue,
                                         PublisherId = row.GetField("publisherId").StringValue,
                                         Title = row.GetField("adTitle").StringValue,
                                         Description = row.GetField("adDescription").StringValue,
                                         Currency = row.GetField("currency").StringValue,
+                                        Category = row.GetField("category").StringValue,
                                         Price = row.GetField("price").DecimalValue,
                                         Version = row.GetField("version").IntValue,
                                         Timestamp = row.GetField("txTime").TimestampValue.ToString()
                                     };
 
                                     adWithVersion.Add(ad);
-
                                 }
                             });
 
 
-                            return new APIGatewayProxyResponse
+                            if (adWithVersion.Count == 0)
                             {
-                                Body = JsonSerializer.Serialize(adWithVersion, typeof(List<AdHistory>)),
-                                StatusCode = 200
-                            };
+                                return new APIGatewayProxyResponse
+                                {
+                                    Body = "[]",
+                                    StatusCode = 200
+                                };
+                            }
+                            else
+                            {
+                                return new APIGatewayProxyResponse
+                                {
+                                    Body = JsonSerializer.Serialize(adWithVersion, typeof(List<Ad>)),
+                                    StatusCode = 200
+                                };
+                            }
                         }
                         else
                         {
@@ -89,17 +102,29 @@ namespace AdReader
                                     ad.Id = row.GetField("adId").StringValue;
                                     ad.PublisherId = row.GetField("publisherId").StringValue;
                                     ad.Title = row.GetField("adTitle").StringValue;
+                                    ad.Category = row.GetField("category").StringValue;
                                     ad.Description = row.GetField("adDescription").StringValue;
                                     ad.Currency = row.GetField("currency").StringValue;
                                     ad.Price = row.GetField("price").DecimalValue;
                                 }
                             });
 
-                            return new APIGatewayProxyResponse
+                            if (string.IsNullOrEmpty(ad.Id))
                             {
-                                Body = JsonSerializer.Serialize(ad, typeof(Ad)),
-                                StatusCode = 200
-                            };
+                                return new APIGatewayProxyResponse
+                                {
+                                    Body = "",
+                                    StatusCode = 200
+                                };
+                            }
+                            else
+                            {
+                                return new APIGatewayProxyResponse
+                                {
+                                    Body = JsonSerializer.Serialize(ad, typeof(Ad)),
+                                    StatusCode = 200
+                                };
+                            }
                         }
                     }
                     catch (NullReferenceException)
@@ -116,17 +141,29 @@ namespace AdReader
                                 ad.Id = row.GetField("adId").StringValue;
                                 ad.PublisherId = row.GetField("publisherId").StringValue;
                                 ad.Title = row.GetField("adTitle").StringValue;
+                                ad.Category = row.GetField("category").StringValue;
                                 ad.Description = row.GetField("adDescription").StringValue;
                                 ad.Currency = row.GetField("currency").StringValue;
                                 ad.Price = row.GetField("price").DecimalValue;
                             }
                         });
 
-                        return new APIGatewayProxyResponse
+                        if (string.IsNullOrEmpty(ad.Id))
                         {
-                            Body = JsonSerializer.Serialize(ad, typeof(Ad)),
-                            StatusCode = 200
-                        };
+                            return new APIGatewayProxyResponse
+                            {
+                                Body = "",
+                                StatusCode = 200
+                            };
+                        }
+                        else
+                        {
+                            return new APIGatewayProxyResponse
+                            {
+                                Body = JsonSerializer.Serialize(ad, typeof(Ad)),
+                                StatusCode = 200
+                            };
+                        }
                     }
 
                 }
@@ -145,6 +182,7 @@ namespace AdReader
                                 Id = row.GetField("adId").StringValue,
                                 PublisherId = row.GetField("publisherId").StringValue,
                                 Title = row.GetField("adTitle").StringValue,
+                                Category = row.GetField("category").StringValue,
                                 Description = row.GetField("adDescription").StringValue,
                                 Currency = row.GetField("currency").StringValue,
                                 Price = row.GetField("price").DecimalValue
@@ -155,11 +193,23 @@ namespace AdReader
                         }
                     });
 
-                    return new APIGatewayProxyResponse
+
+                    if (adList.Count == 0)
                     {
-                        Body = JsonSerializer.Serialize(adList, typeof(List<Ad>)),
-                        StatusCode = 200
-                    };
+                        return new APIGatewayProxyResponse
+                        {
+                            Body = "[]",
+                            StatusCode = 200
+                        };
+                    }
+                    else
+                    {
+                        return new APIGatewayProxyResponse
+                        {
+                            Body = JsonSerializer.Serialize(adList, typeof(List<Ad>)),
+                            StatusCode = 200
+                        };
+                    }
                 }
             }
             else

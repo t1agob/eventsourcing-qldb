@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace AdPublisher
@@ -16,6 +17,10 @@ namespace AdPublisher
         public decimal Price { get; set; }
         [JsonPropertyName("currency")]
         public string Currency { get; set; }
+        [JsonPropertyName("category")]
+        public string Category { get; set; }
+        [JsonPropertyName("tags")]
+        public List<string> Tags {get; set; }
     }
     
 }
