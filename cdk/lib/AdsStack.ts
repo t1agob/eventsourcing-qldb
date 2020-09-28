@@ -80,11 +80,11 @@ export class AdsStack extends cdk.Stack {
     });
 
     const clientHandler = new Function(this, "ClientHandler", {
-      runtime: Runtime.DOTNET_CORE_3_1,
+      runtime: Runtime.NODEJS_12_X,
       code: Code.fromAsset(
-        "../backend/src/AdClient/bin/Debug/netcoreapp3.1/publish"
+        "../backend/src/AdClientAPI/.serverless/adclientapi.zip"
       ),
-      handler: "AdClient::AdClient.Function::FunctionHandler",
+      handler: "handler.handler",
       role: lambdaRole,
       timeout: Duration.seconds(15),
       environment: {
