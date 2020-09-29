@@ -278,13 +278,13 @@ export class AdsStack extends cdk.Stack {
     });
 
     const readerHandler = new Function(this, "ReaderHandler", {
-      runtime: Runtime.DOTNET_CORE_3_1,
+      runtime: Runtime.NODEJS_12_X,
       role: lambdaRole,
       timeout: Duration.seconds(15),
       code: Code.fromAsset(
-        "../backend/src/AdReader/bin/Debug/netcoreapp3.1/publish"
+        "../backend/src/AdReaderAPI/.serverless/adreaderapi.zip"
       ),
-      handler: "AdReader::AdReader.Function::FunctionHandler",
+      handler: "handler.handler",
       environment: {
         ledgerName: `${ledger.name}`
       }
