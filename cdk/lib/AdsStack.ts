@@ -1,9 +1,9 @@
 import * as cdk from '@aws-cdk/core';
 import { CfnLedger, CfnStream } from '@aws-cdk/aws-qldb';
-import { Role, ServicePrincipal, ManagedPolicy, Policy, PolicyDocument, PolicyStatement, Effect } from '@aws-cdk/aws-iam';
+import { Role, ServicePrincipal, ManagedPolicy, PolicyDocument, PolicyStatement, Effect } from '@aws-cdk/aws-iam';
 import * as Kinesis from '@aws-cdk/aws-kinesis';
 import { Runtime, Code, Function } from '@aws-cdk/aws-lambda';
-import { Duration, CfnOutput, Stack, BundlingDockerImage } from '@aws-cdk/core';
+import { Duration, CfnOutput } from '@aws-cdk/core';
 import { RestApi, LambdaIntegration } from '@aws-cdk/aws-apigateway';
 import { CfnDomain } from "@aws-cdk/aws-elasticsearch";
 import { Alias } from "@aws-cdk/aws-kms";
@@ -18,7 +18,6 @@ export class AdsStack extends cdk.Stack {
     // UPDATE THIS SECTION WITH YOUR CREDENTIALS
     const esUserName = "elasticads";
     const esPassword = "Elastic4d$";
-    //
 
 
     // CLIENT
@@ -135,16 +134,6 @@ export class AdsStack extends cdk.Stack {
       streamName: "adsStream"
     });
 
-    const qldbStreamConfig = new CfnStream(this, "qldbStreamConfig", {
-      ledgerName: "adLedger",
-      streamName: qldbStream.streamName,
-      roleArn: QldbToKinesisRole.roleArn,
-      inclusiveStartTime: new Date().toISOString(),
-      kinesisConfiguration: {
-        aggregationEnabled: true,
-        streamArn: qldbStream.streamArn,
-      },
-    });
 
     // LAMBDA ROLE WITH PERMISSIONS TO WRITE TO ELASTIC SEARCH
     const processorLambdaRole = new Role(this, "adstack-lambda-es-access", {
@@ -211,50 +200,6 @@ export class AdsStack extends cdk.Stack {
       ManagedPolicy.fromAwsManagedPolicyName("CloudWatchFullAccess")
     );
     
-    const deliveryStream = new CfnDeliveryStream(this, "deliveryStream", {
-      kinesisStreamSourceConfiguration: {
-        kinesisStreamArn: qldbStream.streamArn,
-        roleArn: firehoseRole.roleArn,
-      },
-      deliveryStreamName: "AdsKinesisFirehose",
-      deliveryStreamType: "KinesisStreamAsSource",
-      elasticsearchDestinationConfiguration: {
-        processingConfiguration: {
-          enabled: true,
-          processors: [
-            {
-              type: "Lambda",
-              parameters: [
-                {
-                  parameterName: "LambdaArn",
-                  parameterValue: processorHandler.functionArn,
-                },
-                {
-                  parameterName: "RoleArn",
-                  parameterValue: processorLambdaRole.roleArn,
-                },
-              ],
-            },
-          ],
-        },
-        roleArn: firehoseRole.roleArn,
-        domainArn: es.attrArn,
-        indexName: "ads",
-        cloudWatchLoggingOptions: {
-          enabled: true,
-          logGroupName: "/aws/kinesisfirehose/adsfirehose-elasticsearch",
-          logStreamName: "adsfirehose-elasticsearch",
-        },
-        indexRotationPeriod: "NoRotation",
-        s3BackupMode: "AllDocuments",
-        s3Configuration: {
-          bucketArn: s3bucket.bucketArn,
-          roleArn: firehoseRole.roleArn,
-          compressionFormat: "GZIP",
-          errorOutputPrefix: "error_",
-        },
-      },
-    });
 
     const publisherHandler = new Function(this, "PublisherHandler", {
       runtime: Runtime.NODEJS_12_X,
