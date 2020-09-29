@@ -256,22 +256,14 @@ export class AdsStack extends cdk.Stack {
       },
     });
 
-
-
-
-
-
-
-
-
     const publisherHandler = new Function(this, "PublisherHandler", {
-      runtime: Runtime.DOTNET_CORE_3_1,
+      runtime: Runtime.NODEJS_12_X,
       role: lambdaRole,
       timeout: Duration.seconds(15),
       code: Code.fromAsset(
-        "../backend/src/AdPublisher/bin/Debug/netcoreapp3.1/publish"
+        "../backend/src/AdPublisherAPI/.serverless/adpublisherapi.zip"
       ),
-      handler: "AdPublisher::AdPublisher.Function::FunctionHandler",
+      handler: "handler.handler",
       environment: {
         ledgerName: `${ledger.name}`
       }
