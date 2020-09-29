@@ -45,16 +45,16 @@ The below architecture represents all the components used in setting up this exa
 - Serverless Framework ([install](https://www.serverless.com/framework/docs/providers/aws/guide/installation/))
   
 
-  
+
 ## How to deploy
 Every single component of this infrastructure is automatically deploy by using [AWS CDK](https://aws.amazon.com/cdk/). To deploy follow this steps:
 
 1. **Clone the project**
 
-```bash
-$ mkdir projects && cd projects
-$ git clone https://github.com/t1agob/eventsourcing-qldb.git eventsourcing-qldb
-```
+    ```bash
+    $ mkdir projects && cd projects
+    $ git clone https://github.com/t1agob/eventsourcing-qldb.git eventsourcing-qldb
+    ```
 
 2. **Open the project in Visual Studio Code**
    
