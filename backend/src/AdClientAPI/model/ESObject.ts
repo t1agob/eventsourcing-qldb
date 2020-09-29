@@ -1,4 +1,4 @@
-export class Ad {
+export default class Ad {
     public adId: string;
     public publisherId: string;
     public adTitle: string;

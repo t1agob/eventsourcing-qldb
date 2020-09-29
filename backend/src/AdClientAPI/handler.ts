@@ -1,7 +1,7 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import axios from 'axios';
 import { plainToClass } from 'class-transformer';
-import { Ad } from './model/ESObject';
+import Ad from './model/ESObject';
 
 import 'source-map-support/register';
 
