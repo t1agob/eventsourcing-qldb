@@ -34,17 +34,18 @@ The below architecture represents all the components used in setting up this exa
   - **Elastic Search** for Client API search operations
   - **Amazon EventBridge** for integration across AWS Accounts or Integration Partners
 
-#### Requirements
-- Visual Studio Code ([install](https://code.visualstudio.com/download))
-- AWS Toolkit for Visual Studio Code ([install](https://docs.aws.amazon.com/toolkit-for-vscode/latest/userguide/setup-toolkit.html))
-- Node.js ([install](https://nodejs.org/en/download/))
-- Serverless Framework ([install](https://www.serverless.com/framework/docs/providers/aws/guide/installation/))
-
-
 #### Clients
 - **API Gateway** exposes all API operations to Ad Clients.
 - **Lambda Functions** implements all search operation to query Ads on Elastic Search
 
+## Requirements
+- Visual Studio Code ([install](https://code.visualstudio.com/download))
+- AWS Toolkit for Visual Studio Code ([install](https://docs.aws.amazon.com/toolkit-for-vscode/latest/userguide/setup-toolkit.html))
+- Node.js ([install](https://nodejs.org/en/download/))
+- Serverless Framework ([install](https://www.serverless.com/framework/docs/providers/aws/guide/installation/))
+  
+
+  
 ## How to deploy
 Every single component of this infrastructure is automatically deploy by using [AWS CDK](https://aws.amazon.com/cdk/). To deploy follow this steps:
 
