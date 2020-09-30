@@ -132,31 +132,31 @@ curl --location --request PATCH '[API ENDPOINT]/publisher/[PUBLISHER ID]/ad/[AD 
 #### Delete Ad
 
 ```json 
-curl --location --request DELETE '[API ENDPOINT]/publisher/[PUBLISHER ID]/ad/[AD ID]'
+curl --location --request DELETE '[API_ENDPOINT]/publisher/[PUBLISHER_ID]/ad/[AD_ID]'
 ```
 
 #### Get All Ads for specific Publisher
 
 ```json
-curl --location --request GET '[API ENDPOINT]/publisher/[PUBLISHER ID]/ad'
+curl --location --request GET '[API_ENDPOINT]/publisher/[PUBLISHER_ID]/ad'
 ```
 
 #### Get specific Ad
 
 ```json
-curl --location --request GET '[API ENDPOINT]/publisher/[PUBLISHER ID]/ad/[AD ID]'
+curl --location --request GET '[API_ENDPOINT]/publisher/[PUBLISHER_ID]/ad/[AD_ID]'
 ```
 
 #### Get specific Ad with versions
 
 ```json
-curl --location --request GET '[API ENDPOINT]/publisher/[PUBLISHER ID]/ad/[AD ID]?versions=true'
+curl --location --request GET '[API_ENDPOINT]/publisher/[PUBLISHER_ID]/ad/[AD_ID]?versions=true'
 ```
 
 #### Search Ads on ElasticSearch
 
 ```json
-curl --location --request GET '[API ENDPOINT]/?q=[QUERY]'
+curl --location --request GET '[API_ENDPOINT]/?q=[QUERY]'
 ```
 
 # Work in progress
