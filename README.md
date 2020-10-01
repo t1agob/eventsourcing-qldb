@@ -1,5 +1,5 @@
-# Event Sourcing using AWS QLDB
-This is an example implementation of the Event Sourcing pattern using QLDB. In order to make this as close as possible to a real world scenario we choose a **Classified Ads** use case.
+# Event Sourcing and System of Record using AWS QLDB
+This is an example implementation of the Event Sourcing with System of Record pattern using QLDB. In order to make this as close as possible to a real world scenario we choose a **Classified Ads** use case.
 
 As such, the focus of this example were the backend services that will provide the APIs for both Publishers and Clients. 
 
@@ -160,7 +160,11 @@ curl --location --request GET '[API_ENDPOINT]/?q=[QUERY]'
 ```
 
 # Work in progress
+
 - [ ] Integration with EventBridge
+- [ ] Implement Event Sourcing features 
+  - [ ] Replay
+  - [ ] Snapshot
 
 
 ## Contributions are welcome!
