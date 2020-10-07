@@ -134,6 +134,16 @@ export class AdsStack extends cdk.Stack {
       streamName: "adsStream"
     });
 
+    new CfnStream(this, "qldbStreamConfig", {
+      ledgerName: "adLedger",
+      streamName: qldbStream.streamName,
+      roleArn: QldbToKinesisRole.roleArn,
+      inclusiveStartTime: new Date().toISOString(),
+      kinesisConfiguration: {
+        aggregationEnabled: true,
+        streamArn: qldbStream.streamArn,
+      },
+    });
 
     // LAMBDA ROLE WITH PERMISSIONS TO WRITE TO ELASTIC SEARCH
     const processorLambdaRole = new Role(this, "adstack-lambda-es-access", {
@@ -145,7 +155,7 @@ export class AdsStack extends cdk.Stack {
       ManagedPolicy.fromAwsManagedPolicyName("AWSLambdaFullAccess")
     );
     processorLambdaRole.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("AmazonKinesisFullAccess")
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonKinesisFirehoseReadOnlyAccess")
     );
 
     // PROCESSOR LAMBDA
@@ -199,7 +209,51 @@ export class AdsStack extends cdk.Stack {
     firehoseRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName("CloudWatchFullAccess")
     );
+
+    firehoseRole.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonVPCFullAccess")
+    );
     
+    new CfnDeliveryStream(this, "deliveryStream", {
+      kinesisStreamSourceConfiguration: {
+        kinesisStreamArn: qldbStream.streamArn,
+        roleArn: firehoseRole.roleArn,
+      },
+      deliveryStreamName: "AdsKinesisFirehose",
+      deliveryStreamType: "KinesisStreamAsSource",
+      elasticsearchDestinationConfiguration: {
+        processingConfiguration: {
+          enabled: true,
+          processors: [
+            {
+              type: "Lambda",
+              parameters: [
+                {
+                  parameterName: "LambdaArn",
+                  parameterValue: processorHandler.functionArn,
+                },
+              ],
+            },
+          ],
+        },
+        roleArn: firehoseRole.roleArn,
+        domainArn: es.attrArn,
+        indexName: "ads",
+        cloudWatchLoggingOptions: {
+          enabled: true,
+          logGroupName: "/aws/kinesisfirehose/adsfirehose-elasticsearch",
+          logStreamName: "adsfirehose-elasticsearch",
+        },
+        indexRotationPeriod: "NoRotation",
+        s3BackupMode: "AllDocuments",
+        s3Configuration: {
+          bucketArn: s3bucket.bucketArn,
+          roleArn: firehoseRole.roleArn,
+          compressionFormat: "GZIP",
+          errorOutputPrefix: "error_",
+        },
+      },
+    });
 
     const publisherHandler = new Function(this, "PublisherHandler", {
       runtime: Runtime.NODEJS_12_X,
