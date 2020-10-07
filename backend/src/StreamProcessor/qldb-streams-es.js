@@ -34,7 +34,7 @@ async function processIon(ionRecord) {
     const publisherId = ionRecord.payload.revision.data.publisherId.stringValue();
     const adTitle = ionRecord.payload.revision.data.adTitle.stringValue();
     const adDescription = ionRecord.payload.revision.data.adDescription.stringValue();
-    const price = ionRecord.payload.revision.data.price.decimalValue();
+    const price = ionRecord.payload.revision.data.price.numberValue();
     const currency = ionRecord.payload.revision.data.currency.stringValue();
     const category = ionRecord.payload.revision.data.category.stringValue();
     const tags = ionRecord.payload.revision.data.tags.toString();
