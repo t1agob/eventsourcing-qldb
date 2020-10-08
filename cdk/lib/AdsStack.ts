@@ -2,7 +2,7 @@ import * as cdk from '@aws-cdk/core';
 import { CfnLedger, CfnStream } from '@aws-cdk/aws-qldb';
 import { Role, ServicePrincipal, ManagedPolicy, PolicyDocument, PolicyStatement, Effect } from '@aws-cdk/aws-iam';
 import * as Kinesis from '@aws-cdk/aws-kinesis';
-import { Runtime, Code, Function } from '@aws-cdk/aws-lambda';
+import { Runtime, Code, Function, StartingPosition } from '@aws-cdk/aws-lambda';
 import { Duration, CfnOutput } from '@aws-cdk/core';
 import { RestApi, LambdaIntegration } from '@aws-cdk/aws-apigateway';
 import { CfnDomain } from "@aws-cdk/aws-elasticsearch";
@@ -10,6 +10,9 @@ import { Alias } from "@aws-cdk/aws-kms";
 import { CfnDeliveryStream } from '@aws-cdk/aws-kinesisfirehose';
 import { Bucket } from '@aws-cdk/aws-s3';
 import { StreamEncryption } from '@aws-cdk/aws-kinesis';
+import * as dynamodb from '@aws-cdk/aws-dynamodb';
+import { KinesisEventSource } from '@aws-cdk/aws-lambda-event-sources';
+
 
 export class AdsStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -19,8 +22,10 @@ export class AdsStack extends cdk.Stack {
     const esUserName = "elasticads";
     const esPassword = "Elastic4d$";
 
+    //
+    // CLIENT API - API GATEWAY -> LAMBDA -> ELASTIC SEARCH
+    //
 
-    // CLIENT
     const lambdaRole = new Role(this, "adstack-lambda-qldbaccess", {
       assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
       roleName: "adstack-lambda-qldbaccess-role",
@@ -110,7 +115,9 @@ export class AdsStack extends cdk.Stack {
       },
     });
 
-    // PUBLISHER
+    //
+    // PUBLISHER API - API GATEWAY -> LAMBDA -> QLDB
+    //
 
     const ledger = new CfnLedger(this, "adLedger", {
       name: "adLedger",
@@ -184,6 +191,47 @@ export class AdsStack extends cdk.Stack {
       }
     });
 
+    // DynamoDB
+    const table = new dynamodb.Table(this, 'Table', {
+      tableName: "dynamoAds",
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING }
+    });
+
+    // Dynamo Processor Lambda
+    const dynamoProcessorRole = new Role(this, "adstack-lambda-dynamo-access", {
+      assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
+      roleName: "adstack-lambda-dynamo-access-role",
+    });
+
+    dynamoProcessorRole.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName("AWSLambdaFullAccess")
+    );
+    dynamoProcessorRole.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonDynamoDBFullAccess")
+    );
+    dynamoProcessorRole.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonKinesisFullAccess")
+    );
+
+    // PROCESSOR LAMBDA
+    const dynamoProcessorHandler = new Function(this, "DynamoProcessorHandler", {
+      runtime: Runtime.NODEJS_12_X,
+      code: Code.fromAsset(
+        "../backend/src/DynamoProcessor/.serverless/dynamoprocessor.zip"
+      ),
+      handler: "handler.handler",
+      role: dynamoProcessorRole,
+      timeout: Duration.minutes(3),
+      environment: {
+        tableName: table.tableName
+      }
+    });
+
+    dynamoProcessorHandler.addEventSource(new KinesisEventSource(qldbStream, {
+      retryAttempts: 10,
+      startingPosition: StartingPosition.TRIM_HORIZON,
+    }));
+
     // ROLE WITH PERMISSIONS TO WRITE TO S3, ACCESS KINESIS DATA STREAM
     const firehoseRole = new Role(this, "kinesisFirehoseRole", {
       assumedBy: new ServicePrincipal("firehose.amazonaws.com"),
@@ -213,13 +261,14 @@ export class AdsStack extends cdk.Stack {
     firehoseRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName("AmazonVPCFullAccess")
     );
-    
-    new CfnDeliveryStream(this, "deliveryStream", {
+
+    // Kinesis Firehose Delivery Stream to Elastic Search and S3 for Backup
+    new CfnDeliveryStream(this, "s3-es-deliveryStream", {
       kinesisStreamSourceConfiguration: {
         kinesisStreamArn: qldbStream.streamArn,
         roleArn: firehoseRole.roleArn,
       },
-      deliveryStreamName: "AdsKinesisFirehose",
+      deliveryStreamName: "AdsKinesisFirehose-ES-S3",
       deliveryStreamType: "KinesisStreamAsSource",
       elasticsearchDestinationConfiguration: {
         processingConfiguration: {
@@ -254,6 +303,8 @@ export class AdsStack extends cdk.Stack {
         },
       },
     });
+
+    
 
     const publisherHandler = new Function(this, "PublisherHandler", {
       runtime: Runtime.NODEJS_12_X,

@@ -161,7 +161,7 @@ curl --location --request GET '[API_ENDPOINT]/?q=[QUERY]'
 
 # Work in progress
 
-- [ ] Add DynamoDB as the state store
+- [x] Add DynamoDB as the state store
 - [ ] Update internal GET operations to query DynamoDB instead of QLDB (for best practices and scalability purposes)
 - [ ] Integration with EventBridge
 - [ ] Implement Event Sourcing features 
