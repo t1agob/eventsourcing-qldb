@@ -4,7 +4,7 @@ import { QldbDriver, TransactionExecutor } from 'amazon-qldb-driver-nodejs';
 import Ad from './model/ESObject';
 
 const tableName = "Ads";
-const indexes = ["adId", "publisherId"];
+const indexes = ["adId"];
 const adLedger = process.env.ledgerName;
 
 const serviceConfigurationOptions = {

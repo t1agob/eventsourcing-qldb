@@ -4,7 +4,7 @@ import { QldbDriver, TransactionExecutor } from 'amazon-qldb-driver-nodejs';
 import Ad from './model/ESObject';
 
 const tableName = "Ads";
-const indexes = ["adId", "publisherId"];
+const indexes = ["adId"];
 
 const adLedger = process.env.ledgerName;
 
@@ -34,9 +34,9 @@ export const handler: APIGatewayProxyHandler = async (event, _context) => {
         if (event.queryStringParameters["versions"] == "false") {
 
           try {
-            const query = "SELECT * FROM Ads WHERE publisherId = ? and adId = ?";
+            const query = "SELECT * FROM Ads WHERE adId = ?";
 
-            const ad = await getAd(query, publisher, adId);
+            const ad = await getAd(query, adId);
 
             return {
               statusCode: 200,
@@ -51,9 +51,9 @@ export const handler: APIGatewayProxyHandler = async (event, _context) => {
         }
         else { // RETURN ALL VERSIONS OF AD
           try {
-            const query = "SELECT h.data.adId, h.data.publisherId, h.data.adTitle, h.data.category, h.data.adDescription, h.data.price, h.data.currency, h.data.tags, h.metadata.version, h.metadata.txTime FROM history(Ads) AS h WHERE h.data.adId = ? and h.data.publisherId = ?";
+            const query = "SELECT h.data.adId, h.data.publisherId, h.data.adTitle, h.data.category, h.data.adDescription, h.data.price, h.data.currency, h.data.tags, h.metadata.version, h.metadata.txTime FROM history(Ads) AS h WHERE h.data.adId = ?";
 
-            const adList = await getAdList(query, true, adId, publisher);
+            const adList = await getAdList(query, true, adId);
 
             if (adList.length == 0) {
               return {
@@ -75,9 +75,9 @@ export const handler: APIGatewayProxyHandler = async (event, _context) => {
       }
       else { // RETURN LATEST VERSION OF AD
         try {
-          const query = "SELECT * FROM Ads WHERE publisherId = ? and adId = ?";
+          const query = "SELECT * FROM Ads WHERE adId = ?";
 
-          const ad = await getAd(query, publisher, adId);
+          const ad = await getAd(query, adId);
 
           return {
             statusCode: 200,
