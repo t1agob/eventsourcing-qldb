@@ -12,6 +12,7 @@ import { Bucket } from '@aws-cdk/aws-s3';
 import { StreamEncryption } from '@aws-cdk/aws-kinesis';
 import * as dynamodb from '@aws-cdk/aws-dynamodb';
 import { KinesisEventSource } from '@aws-cdk/aws-lambda-event-sources';
+import { AttributeType } from '@aws-cdk/aws-dynamodb';
 
 
 export class AdsStack extends cdk.Stack {
@@ -194,7 +195,19 @@ export class AdsStack extends cdk.Stack {
     // DynamoDB
     const table = new dynamodb.Table(this, 'Table', {
       tableName: "dynamoAds",
-      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING }
+      partitionKey: { name: 'id', type: AttributeType.STRING }
+    });
+
+    table.addGlobalSecondaryIndex({
+      indexName: "ad-query-index",
+      partitionKey: {
+        name: "publisherId",
+        type: AttributeType.STRING
+      },
+      sortKey: {
+        name: "adId",
+        type: AttributeType.STRING
+      }
     });
 
     // Dynamo Processor Lambda
