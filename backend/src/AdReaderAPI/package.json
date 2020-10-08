@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "amazon-qldb-driver-nodejs": "^2.0.0",
+    "aws-sdk": "^2.769.0",
     "ion-js": "^4.0.1",
     "jsbi": "^3.1.4",
     "source-map-support": "^0.5.10"

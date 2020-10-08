@@ -2,6 +2,12 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support/register';
 import { QldbDriver, TransactionExecutor } from 'amazon-qldb-driver-nodejs';
 import Ad from './model/ESObject';
+import * as DynamoDB from 'aws-sdk/clients/dynamodb';
+
+const dynamoTableName = process.env.tableName;
+const dynamodb = new DynamoDB.DocumentClient();
+
+console.log(`DynamoDB Table Name: ${dynamoTableName}`);
 
 const tableName = "Ads";
 const indexes = ["adId"];
@@ -19,10 +25,6 @@ let tableExists = false;
 export const handler: APIGatewayProxyHandler = async (event, _context) => {
 
   if (event.httpMethod == "GET") {
-    if(!tableExists){
-      await ensureTable();
-    }
-    
     const publisher = event.pathParameters["publisher"];
     const adId = event.pathParameters["adId"];
 
@@ -34,23 +36,29 @@ export const handler: APIGatewayProxyHandler = async (event, _context) => {
         if (event.queryStringParameters["versions"] == "false") {
 
           try {
-            const query = "SELECT * FROM Ads WHERE adId = ?";
-
-            const ad = await getAd(query, adId);
+            const ad = await getDynamoAd(adId, publisher);
 
             return {
               statusCode: 200,
               body: JSON.stringify(ad)
             };
-
           }
           catch (e) {
             console.error(e);
+
+            return {
+              statusCode: 500,
+              body: e
+            };
           }
 
         }
         else { // RETURN ALL VERSIONS OF AD
           try {
+            if (!tableExists) {
+              await ensureTable();
+            }
+
             const query = "SELECT h.data.adId, h.data.publisherId, h.data.adTitle, h.data.category, h.data.adDescription, h.data.price, h.data.currency, h.data.tags, h.metadata.version, h.metadata.txTime FROM history(Ads) AS h WHERE h.data.adId = ?";
 
             const adList = await getAdList(query, true, adId);
@@ -75,18 +83,20 @@ export const handler: APIGatewayProxyHandler = async (event, _context) => {
       }
       else { // RETURN LATEST VERSION OF AD
         try {
-          const query = "SELECT * FROM Ads WHERE adId = ?";
-
-          const ad = await getAd(query, adId);
+          const ad = await getDynamoAd(adId, publisher);
 
           return {
             statusCode: 200,
             body: JSON.stringify(ad)
           };
-
         }
         catch (e) {
           console.error(e);
+
+          return {
+            statusCode: 500,
+            body: e
+          };
         }
       }
 
@@ -95,8 +105,7 @@ export const handler: APIGatewayProxyHandler = async (event, _context) => {
       console.log(`retrieving all ads from publisher ${publisher}`);
 
       try {
-        const query = "SELECT * FROM Ads WHERE publisherId = ?";
-        const adList = await getAdList(query, false, publisher);
+        const adList = await getDynamoAdList(publisher);
 
         if (adList.length == 0) {
           return {
@@ -156,28 +165,92 @@ async function getAdList(query: string, versions: boolean, ...args: any[]): Prom
   return adList;
 }
 
-async function getAd(query: string, ...args: any[]): Promise<Ad> {
-  let ad: Ad = new Ad();
+async function getDynamoAd(adId: string, publisherId: string): Promise<Ad>{
+  var params = {
+    TableName: dynamoTableName,
+    IndexName: 'publisherId-adId-index',
+    KeyConditionExpression: 'publisherId = :publisherId and adId = :adId',
+    ExpressionAttributeValues: {
+      ':publisherId': publisherId,
+      ':adId': adId
+    }
+  };
 
-  await driver.executeLambda(async (txn) => {
-    return txn.execute(query, ...args);
-  }).then((result) => {
+  let queryResult;
 
-    const resultList = result.getResultList();
+  await dynamodb.query(params, (err, data) => {
+    const rs: Ad = new Ad();
+    
+    if (err) {
+      console.error(err);
+      return {
+        statusCode: 500,
+        body: err.message
+      };
+    }
+    else {
+      if (data.Items.length > 0) {
+        const dataItem = data.Items[0];
 
-    resultList.forEach(element => {
-      ad.adId = element.get("adId");
-      ad.publisherId = element.get("publisherId");
-      ad.adTitle = element.get("adTitle");
-      ad.category = element.get("category");
-      ad.adDescription = element.get("adDescription");
-      ad.currency = element.get("currency");
-      ad.price = element.get("price");
-      ad.tags = element.get("tags");
-    });
-  });
+        rs.adId = dataItem.adId;
+        rs.publisherId = dataItem.publisherId;
+        rs.adTitle = dataItem.adTitle;
+        rs.adDescription = dataItem.adDescription;
+        rs.category = dataItem.category;
+        rs.currency = dataItem.currency;
+        rs.price = dataItem.price;
+        rs.tags = dataItem.tags;
 
-  return ad;
+        queryResult = rs;
+      }
+    }
+  }).promise();
+
+  console.log(`result: ${queryResult}`);
+  return queryResult;
+}
+
+async function getDynamoAdList(publisherId: string): Promise<Array<Ad>> {
+  let adList: Array<Ad> = new Array<Ad>();
+  
+  var params = {
+    TableName: dynamoTableName,
+    IndexName: 'publisherId-adId-index',
+    KeyConditionExpression: 'publisherId = :publisherId',
+    ExpressionAttributeValues: {
+      ':publisherId': publisherId
+    }
+  };
+
+  await dynamodb.query(params, (err, data) => {
+    if (err) {
+      console.error(err);
+      return {
+        statusCode: 500,
+        body: err.message
+      };
+    }
+    else {
+      let ad: Ad;
+
+      data.Items.forEach(dataItem => {
+        ad = new Ad();
+
+        ad.adId = dataItem.adId;
+        ad.publisherId = dataItem.publisherId;
+        ad.adTitle = dataItem.adTitle;
+        ad.adDescription = dataItem.adDescription;
+        ad.category = dataItem.category;
+        ad.currency = dataItem.currency;
+        ad.price = dataItem.price;
+        ad.tags = dataItem.tags;
+
+        adList.push(ad);
+      });
+    }
+  }).promise();
+
+  return adList;
 }
 
 async function ensureTable() {

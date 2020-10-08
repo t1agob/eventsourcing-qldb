@@ -199,7 +199,7 @@ export class AdsStack extends cdk.Stack {
     });
 
     table.addGlobalSecondaryIndex({
-      indexName: "ad-query-index",
+      indexName: "publisherId-adId-index",
       partitionKey: {
         name: "publisherId",
         type: AttributeType.STRING
