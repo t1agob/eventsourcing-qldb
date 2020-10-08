@@ -161,10 +161,16 @@ curl --location --request GET '[API_ENDPOINT]/?q=[QUERY]'
 
 # Work in progress
 
+- [ ] Add DynamoDB as the state store
+- [ ] Update internal GET operations to query DynamoDB instead of QLDB (for best practices and scalability purposes)
 - [ ] Integration with EventBridge
 - [ ] Implement Event Sourcing features 
   - [ ] Replay
   - [ ] Snapshot
+
+# Important references
+In order to process the items being streamed from QLDB we need to deaggregate these into separate Ion Objects and convert them into the right format so we can push them to Elastic Search and DynamoDB. For that we used the [Kinesis Record Aggregation & Deaggregation Modules for AWS Lambda](https://github.com/awslabs/kinesis-aggregation) open source project from [AWSLabs](https://github.com/awslabs) and took as a reference implementation the one created by [Matt Lewis](https://github.com/mlewis7127) in [QLDB Simple Demo](https://github.com/AWS-South-Wales-User-Group/qldb-simple-demo).
+
 
 
 ## Contributions are welcome!
