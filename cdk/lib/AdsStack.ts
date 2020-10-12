@@ -163,16 +163,16 @@ export class AdsStack extends cdk.Stack {
       ManagedPolicy.fromAwsManagedPolicyName("AWSLambdaFullAccess")
     );
     processorLambdaRole.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("AmazonKinesisFirehoseReadOnlyAccess")
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonKinesisFullAccess")
     );
 
     // PROCESSOR LAMBDA
     const processorHandler = new Function(this, "ProcessorHandler", {
       runtime: Runtime.NODEJS_12_X,
       code: Code.fromAsset(
-        "../backend/src/StreamProcessor/.serverless/streamprocessor.zip"
+        "../backend/src/ESProcessor/.serverless/esprocessor.zip"
       ),
-      handler: "qldb-streams-es.handler",
+      handler: "handler.handler",
       role: processorLambdaRole,
       timeout: Duration.minutes(3),
       environment: {
@@ -182,15 +182,10 @@ export class AdsStack extends cdk.Stack {
       },
     });
 
-    // S3 BUCKET
-    const s3bucket = new Bucket(this, "backupBucket", {
-      blockPublicAccess: {
-        blockPublicPolicy: true,
-        restrictPublicBuckets: true,
-        blockPublicAcls: true,
-        ignorePublicAcls: true
-      }
-    });
+    processorHandler.addEventSource(new KinesisEventSource(qldbStream, {
+      retryAttempts: 10,
+      startingPosition: StartingPosition.TRIM_HORIZON,
+    }));
 
     // DynamoDB
     const table = new dynamodb.Table(this, 'Table', {
@@ -244,80 +239,6 @@ export class AdsStack extends cdk.Stack {
       retryAttempts: 10,
       startingPosition: StartingPosition.TRIM_HORIZON,
     }));
-
-    // ROLE WITH PERMISSIONS TO WRITE TO S3, ACCESS KINESIS DATA STREAM
-    const firehoseRole = new Role(this, "kinesisFirehoseRole", {
-      assumedBy: new ServicePrincipal("firehose.amazonaws.com"),
-      roleName: "adstack-kinesis-firehose",
-    });
-
-    firehoseRole.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess")
-    );
-
-    firehoseRole.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("AWSLambdaFullAccess")
-    );
-
-    firehoseRole.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("AmazonKinesisFullAccess")
-    );
-
-    firehoseRole.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("AmazonESFullAccess")
-    );
-
-    firehoseRole.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("CloudWatchFullAccess")
-    );
-
-    firehoseRole.addManagedPolicy(
-      ManagedPolicy.fromAwsManagedPolicyName("AmazonVPCFullAccess")
-    );
-
-    // Kinesis Firehose Delivery Stream to Elastic Search and S3 for Backup
-    new CfnDeliveryStream(this, "s3-es-deliveryStream", {
-      kinesisStreamSourceConfiguration: {
-        kinesisStreamArn: qldbStream.streamArn,
-        roleArn: firehoseRole.roleArn,
-      },
-      deliveryStreamName: "AdsKinesisFirehose-ES-S3",
-      deliveryStreamType: "KinesisStreamAsSource",
-      elasticsearchDestinationConfiguration: {
-        processingConfiguration: {
-          enabled: true,
-          processors: [
-            {
-              type: "Lambda",
-              parameters: [
-                {
-                  parameterName: "LambdaArn",
-                  parameterValue: processorHandler.functionArn,
-                },
-              ],
-            },
-          ],
-        },
-        roleArn: firehoseRole.roleArn,
-        domainArn: es.attrArn,
-        indexName: "ads",
-        cloudWatchLoggingOptions: {
-          enabled: true,
-          logGroupName: "/aws/kinesisfirehose/adsfirehose-elasticsearch",
-          logStreamName: "adsfirehose-elasticsearch",
-        },
-        indexRotationPeriod: "NoRotation",
-        s3BackupMode: "AllDocuments",
-        s3Configuration: {
-          bucketArn: s3bucket.bucketArn,
-          roleArn: firehoseRole.roleArn,
-          compressionFormat: "GZIP",
-          errorOutputPrefix: "error_",
-        },
-      },
-    });
-
-    
 
     const publisherHandler = new Function(this, "PublisherHandler", {
       runtime: Runtime.NODEJS_12_X,
