@@ -227,8 +227,6 @@ async function getDynamoAdId(adId: string, publisherId: string): Promise<string>
   let queryResult;
 
   await dynamodb.query(params, (err, data) => {
-    const rs: Ad = new Ad();
-
     if (err) {
       console.error(err);
       return {
