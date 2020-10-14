@@ -59,9 +59,12 @@ export const handler: APIGatewayProxyHandler = async (event, _context) => {
               await ensureTable();
             }
 
-            const query = "SELECT h.data.adId, h.data.publisherId, h.data.adTitle, h.data.category, h.data.adDescription, h.data.price, h.data.currency, h.data.tags, h.metadata.version, h.metadata.txTime FROM history(Ads) AS h WHERE h.data.adId = ?";
+            const documentId = await getDynamoAdId(adId, publisher);
+            console.log(`querying history for documentID: ${documentId}`);
 
-            const adList = await getAdList(query, true, adId);
+            const query = "SELECT h.data.adId, h.data.publisherId, h.data.adTitle, h.data.category, h.data.adDescription, h.data.price, h.data.currency, h.data.tags, h.metadata.version, h.metadata.txTime FROM history(Ads) AS h WHERE h.metadata.id = ?";
+
+            const adList = await getAdList(query, true, documentId);
 
             if (adList.length == 0) {
               return {
@@ -207,6 +210,41 @@ async function getDynamoAd(adId: string, publisherId: string): Promise<Ad>{
   }).promise();
 
   console.log(`result: ${queryResult}`);
+  return queryResult;
+}
+
+async function getDynamoAdId(adId: string, publisherId: string): Promise<string> {
+  var params = {
+    TableName: dynamoTableName,
+    IndexName: 'publisherId-adId-index',
+    KeyConditionExpression: 'publisherId = :publisherId and adId = :adId',
+    ExpressionAttributeValues: {
+      ':publisherId': publisherId,
+      ':adId': adId
+    }
+  };
+
+  let queryResult;
+
+  await dynamodb.query(params, (err, data) => {
+    const rs: Ad = new Ad();
+
+    if (err) {
+      console.error(err);
+      return {
+        statusCode: 500,
+        body: err.message
+      };
+    }
+    else {
+      if (data.Items.length > 0) {
+        const dataItem = data.Items[0];
+
+        queryResult = dataItem.id;
+      }
+    }
+  }).promise();
+
   return queryResult;
 }
 
