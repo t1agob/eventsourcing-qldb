@@ -37,7 +37,7 @@ const deleteAd = async (id: string, version: number) => {
 
     const params = {
         TableName: tableName,
-        Key: { id: id },
+        Key: { id: id }
     };
 
     try {

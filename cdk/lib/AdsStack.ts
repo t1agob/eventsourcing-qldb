@@ -3,7 +3,7 @@ import { CfnLedger, CfnStream } from '@aws-cdk/aws-qldb';
 import { Role, ServicePrincipal, ManagedPolicy, PolicyDocument, PolicyStatement, Effect } from '@aws-cdk/aws-iam';
 import * as Kinesis from '@aws-cdk/aws-kinesis';
 import { Runtime, Code, Function, StartingPosition } from '@aws-cdk/aws-lambda';
-import { Duration, CfnOutput } from '@aws-cdk/core';
+import { Duration, CfnOutput, RemovalPolicy } from '@aws-cdk/core';
 import { RestApi, LambdaIntegration } from '@aws-cdk/aws-apigateway';
 import { CfnDomain } from "@aws-cdk/aws-elasticsearch";
 import { Alias } from "@aws-cdk/aws-kms";
@@ -190,7 +190,8 @@ export class AdsStack extends cdk.Stack {
     // DynamoDB
     const table = new dynamodb.Table(this, 'Table', {
       tableName: "dynamoAds",
-      partitionKey: { name: 'id', type: AttributeType.STRING }
+      partitionKey: { name: 'id', type: AttributeType.STRING },
+      removalPolicy: RemovalPolicy.DESTROY
     });
 
     table.addGlobalSecondaryIndex({
@@ -262,7 +263,8 @@ export class AdsStack extends cdk.Stack {
       ),
       handler: "handler.handler",
       environment: {
-        ledgerName: `${ledger.name}`
+        ledgerName: `${ledger.name}`,
+        tableName: table.tableName
       }
     });
 
