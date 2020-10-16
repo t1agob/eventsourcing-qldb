@@ -1,42 +1,27 @@
 # Event Sourcing and System of Record using AWS QLDB
-This is an example implementation of the Event Sourcing with System of Record pattern using QLDB. In order to make this as close as possible to a real world scenario we choose a **Classified Ads** use case.
+This is an example implementation of a System of Record for a **Classified Ads** platform. This example follows an **Event Sourcing and CQRS** (Command Query Responsibility Segregation) pattern using [Amazon QLDB](https://aws.amazon.com/qldb/) as an append-only event store and source of truth. 
 
-As such, the focus of this example were the backend services that will provide the APIs for both Publishers and Clients. 
+> For this specific use case we have focused on the backend services only. 
 
-#### Publishers
-Publishers are registered users that are allowed to manage Ads. Each publisher has its own PublisherId. 
+## Why Event Sourcing and CQRS?
+**Event Sourcing** is a pattern that tipically introduces the concept of **Event Store** - where all events are tracked - and **State Store** - where the latest and final state of each object is stored. While this may add some complexity to the architecture it has some advantages such as:
+ - **Auditing**: Events are immutable and each state change corresponds to one or more events stored on the event store.
+ - **Replay events**: in case of application failure, we are able to reconstruct the state of an entity by replaying all the events since the event store maintains the complete history of every single entity. 
+ - **Temporal queries**: we can determine the application state at any point in time very easily. This can be achieved by starting with a blank state store and replaying the events up to a specific point in time.
+ - **Extensibility**: The event store raises events, and tasks perform operations in response to those events. This decoupling of the tasks from events allows more flexibility and extensibility.
 
-> Generating PublisherIds is not part of the example. Any PublisherId will work.
+In traditional data management systems, both commands and queries are executed against the same data store. This introduces some challenges for applications with a large customer base, such as increased risk for data contention, additional complexity managing security and running routine operations. **CQRS** (Command Query Responsibility Segregation) pattern aims to solve this issues by segregating read and write operations which as some obvious benefits:
+ - **Indepedent scaling**: CQRS allows the read and write workloads to scale independently which may result in fewer lock contentions and optimized costs. 
+ - **Optimized data schemas**: The read side can use a schema optimized for queries, while the write side uses a schema optimized for updates.
+ - **Security**: It's easier to ensure that only the right entity as access to perform reads or writes on the correct data store.
+ - **Separation of concerns**: Models will be more maintainable and flexible. Most of the complex business logic goes into the write model.
+ - **Simpler queries**: By storing a materialized view in the read database the application can avoid complex joins that are compute intensive and potentially more expensive.
 
-#### Clients 
-Clients are any user that will search for Ads through the API or frontend.
-
-> For this example we have not created any frontend.
 
 ## Architecture
-The below architecture represents all the components used in setting up this example. We want to use QLDB as our single source of truth but still integrate with other platforms and datastores that fit each scenario (*ex: ElasticSearch for Client APIs or EventBridge for integration across AWS Accounts*).
+The below architecture represents all the components used in setting up this example. **Amazon QLDB** was the obvious choice for this scenario since it is an immutable data store that triggers events which allows the platform to be highly extensible and support virtually any type of integration (*ex: ElasticSearch for Client APIs or EventBridge for integration across AWS Accounts*).
 
 ![architecture](images/architecture.png)
-
-> **Amazon EventBridge integration is still work in progress**
-
-#### Publishers
-- **API Gateway** exposes all API operations to Ad Publishers.
-- **Lambda Functions** implements all the operations possible to Ad Publishers such as:
-  - Create Ad
-  - Update Ad
-  - Delete Ad
-  - Get All Ads for specific Publisher
-  - Get specific Ad
-  - Get specific Ad with versions 
-- **Amazon Kinesis Data Streams** and **Firehose** to deliver every event to other components:
-  - **S3** for long term backups
-  - **Elastic Search** for Client API search operations
-  - **Amazon EventBridge** for integration across AWS Accounts or Integration Partners
-
-#### Clients
-- **API Gateway** exposes all API operations to Ad Clients.
-- **Lambda Functions** implements all search operation to query Ads on Elastic Search
 
 ## Requirements
 - Visual Studio Code ([install](https://code.visualstudio.com/download))
@@ -44,7 +29,6 @@ The below architecture represents all the components used in setting up this exa
 - Node.js ([install](https://nodejs.org/en/download/))
 - Serverless Framework ([install](https://www.serverless.com/framework/docs/providers/aws/guide/installation/))
   
-
 
 ## How to deploy
 Every single component of this infrastructure is automatically deploy by using [AWS CDK](https://aws.amazon.com/cdk/). To deploy follow this steps:
@@ -79,7 +63,17 @@ Every single component of this infrastructure is automatically deploy by using [
 
     ![updateCredentials](images/updateCredentials.png)
 
-5. **Deploy with CDK**
+5. **Install project dependencies and package projects**
+   
+   In order for CDK to be able to deploy, not only the infrastructure required but also the Lambda Functions that do the actual work, we need to make sure they are packaged correctly.
+
+   Run the following scirpt from the current location to make sure all dependencies are installed and the projects are packaged.
+
+   ```bash
+    $ ./package-projects.sh
+   ```
+
+6. **Deploy with CDK**
 
     ```bash
     $ cdk deploy
@@ -166,7 +160,11 @@ curl --location --request GET '[API_ENDPOINT]/?q=[QUERY]'
 - [ ] Integration with EventBridge
 - [ ] Implement Event Sourcing features 
   - [ ] Replay
+    - [ ] Allow **replay** of a single entity back to a specific point in time
+    - [ ] Allow full replay of a single entity - specific entity lost in state store
+    - [ ] Allow replay of all items - full state store loss
   - [ ] Snapshot
+    - [ ] Create a snpashot of state store after x amount of transactions/specific timeframe 
 
 # Important references
 In order to process the items being streamed from QLDB we need to deaggregate these into separate Ion Objects and convert them into the right format so we can push them to Elastic Search and DynamoDB. For that we used the [Kinesis Record Aggregation & Deaggregation Modules for AWS Lambda](https://github.com/awslabs/kinesis-aggregation) open source project from [AWSLabs](https://github.com/awslabs) and took as a reference implementation the one created by [Matt Lewis](https://github.com/mlewis7127) in [QLDB Simple Demo](https://github.com/AWS-South-Wales-User-Group/qldb-simple-demo).
