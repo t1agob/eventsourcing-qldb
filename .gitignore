@@ -24,3 +24,4 @@ backend/src/.DS_Store
 backend/src/StreamProcessor/.DS_Store
 cdk/.DS_Store
 .DS_Store
+!cdk/bin/
