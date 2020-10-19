@@ -1,5 +1,5 @@
 # Event Sourcing and System of Record using AWS QLDB
-This is an example implementation of a System of Record for a **Classified Ads** platform. This example follows an **Event Sourcing and CQRS** (Command Query Responsibility Segregation) pattern using [Amazon QLDB](https://aws.amazon.com/qldb/) as an append-only event store and source of truth. 
+This is an example implementation of a System of Record for a **Classified Ads** platform. This example follows an **Event Sourcing and CQRS** (Command Query Responsibility Segregation) pattern using [Amazon QLDB](https://aws.amazon.com/qldb/) as an immutable append-only event store and source of truth. 
 
 > For this specific use case we have focused on the backend services only. 
 
