@@ -7,8 +7,6 @@ import { Duration, CfnOutput, RemovalPolicy } from '@aws-cdk/core';
 import { RestApi, LambdaIntegration } from '@aws-cdk/aws-apigateway';
 import { CfnDomain } from "@aws-cdk/aws-elasticsearch";
 import { Alias } from "@aws-cdk/aws-kms";
-import { CfnDeliveryStream } from '@aws-cdk/aws-kinesisfirehose';
-import { Bucket } from '@aws-cdk/aws-s3';
 import { StreamEncryption } from '@aws-cdk/aws-kinesis';
 import * as dynamodb from '@aws-cdk/aws-dynamodb';
 import { KinesisEventSource } from '@aws-cdk/aws-lambda-event-sources';
