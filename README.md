@@ -160,11 +160,11 @@ curl --location --request GET '[API_ENDPOINT]/?q=[QUERY]'
 - [ ] Integration with EventBridge
 - [ ] Implement Event Sourcing features 
   - [ ] Replay
-    - [ ] Allow **replay** of a single entity back to a specific point in time
-    - [ ] Allow full replay of a single entity - specific entity lost in state store
-    - [ ] Allow replay of all items - full state store loss
+    - [ ] Allow **replay of a single entity** back to a specific point in time
+    - [ ] Allow **full replay of a single entity** - specific entity lost in state store
+    - [ ] Allow **replay of all items** - full state store loss
   - [ ] Snapshot
-    - [ ] Create a snpashot of state store after x amount of transactions/specific timeframe 
+    - [ ] Create a **snpashot** of state store after x amount of transactions/specific timeframe 
 
 # Important references
 In order to process the items being streamed from QLDB we need to deaggregate these into separate Ion Objects and convert them into the right format so we can push them to Elastic Search and DynamoDB. For that we used the [Kinesis Record Aggregation & Deaggregation Modules for AWS Lambda](https://github.com/awslabs/kinesis-aggregation) open source project from [AWSLabs](https://github.com/awslabs) and took as a reference implementation the one created by [Matt Lewis](https://github.com/mlewis7127) in [QLDB Simple Demo](https://github.com/AWS-South-Wales-User-Group/qldb-simple-demo).
