@@ -11,6 +11,9 @@ import { StreamEncryption } from '@aws-cdk/aws-kinesis';
 import * as dynamodb from '@aws-cdk/aws-dynamodb';
 import { KinesisEventSource } from '@aws-cdk/aws-lambda-event-sources';
 import { AttributeType } from '@aws-cdk/aws-dynamodb';
+import { BlockPublicAccess, Bucket, LifecycleRule, StorageClass } from '@aws-cdk/aws-s3';
+import { Rule, Schedule } from '@aws-cdk/aws-events';
+import { LambdaFunction } from '@aws-cdk/aws-events-targets';
 
 
 export class AdsStack extends cdk.Stack {
@@ -187,7 +190,6 @@ export class AdsStack extends cdk.Stack {
 
     // DynamoDB
     const table = new dynamodb.Table(this, 'Table', {
-      tableName: "dynamoAds",
       partitionKey: { name: 'id', type: AttributeType.STRING },
       removalPolicy: RemovalPolicy.DESTROY
     });
@@ -298,6 +300,102 @@ export class AdsStack extends cdk.Stack {
       requestParameters: {
         "method.request.querystring.versions": false,
       },
+    });
+
+    //
+    // OPERATIONS COMPONENTS
+    //
+
+    // Storage for Snapshots
+    const snapshotBucket = new Bucket(this, "snapshotBucket", {
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: RemovalPolicy.RETAIN,
+      lifecycleRules: [
+        {
+          enabled: true,
+          transitions: [{
+            storageClass: StorageClass.GLACIER,
+            transitionAfter: Duration.days(90)
+          }]
+        }
+      ]
+    });
+
+    // Role for lambda execution - permissions to export from QLDB and default permissions to write to cloudwatch
+    const exportRole = new Role(this, "LambdaQLDBExportRole", {
+      assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
+      roleName: "LambdaQLDBExportRole",
+    });
+
+    exportRole.addToPrincipalPolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: [
+        "qldb:ExportJournalToS3"
+      ],
+      resources: [
+        `arn:aws:qldb:${this.region}:${this.account}:ledger/${ledger.name}`
+      ]
+    }));
+
+    exportRole.addToPrincipalPolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: [
+        "logs:CreateLogStream",
+        "logs:CreateLogGroup",
+        "logs:PutLogEvents"
+      ],
+      resources: [
+        "*"
+      ]
+    }));
+
+    // Role for export job execution - permissions to write to S3
+    const exportJobRole = new Role(this, "QLDBExportJobRole", {
+      assumedBy: new ServicePrincipal("qldb.amazonaws.com"),
+      roleName: "QLDBExportJobRole",
+    });
+
+    exportJobRole.addToPrincipalPolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: [
+        "s3:PutObjectAcl",
+        "s3:PutObject"
+      ],
+      resources: [
+        `${snapshotBucket.bucketArn}/*`
+      ]
+    }));
+
+    // Snapshot Lambda
+    const SnapshotHandler = new Function(this, "SnapshotHandler", {
+      runtime: Runtime.NODEJS_12_X,
+      code: Code.fromAsset(
+        "../backend/src/PeriodicSnapshot/.serverless/opsapi.zip"
+      ),
+      handler: "handler.handler",
+      role: exportRole,
+      timeout: Duration.minutes(3),
+      environment: {
+        ledgerName: `${ledger.name}`,
+        roleArn: exportJobRole.roleArn,
+        bucketName: snapshotBucket.bucketName,
+      }
+    });
+
+    // Cloudwatch Event Rule to trigger on the first day of each month
+    const lambdaTarget = new LambdaFunction(SnapshotHandler);
+
+    new Rule(this, "monthlyTrigger", {
+      ruleName: "CreateQLDBSnapshot",
+      enabled: true,
+      schedule: Schedule.cron({
+        minute: "1",
+        hour: "0",
+        day: "1",
+        month: "*",
+        year: "*"
+      }),
+      targets: [lambdaTarget]
     });
   }
 }

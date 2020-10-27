@@ -13,5 +13,8 @@ cd ../DynamoProcessor && npm install && sls package
 ## Package ESProcessor
 cd ../ESProcessor && npm install && sls package
 
+## Package ESProcessor
+cd ../PeriodicSnapshot && npm install && sls package
+
 ## Return to CDK folder
 cd ../../../cdk
