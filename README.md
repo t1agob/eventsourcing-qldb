@@ -160,12 +160,10 @@ curl --location --request GET '[API_ENDPOINT]/?q=[QUERY]'
 - [ ] Implement Event Sourcing features 
   - [x] Snapshot
     - [x] Create a **snapshot** of state store after specific timeframe (eg. every 1st day of each month)
-- [ ] Replay
-    - [ ] Allow **replay of a single entity** back to a specific point in time
-    - [ ] Allow **full replay of a single entity** - specific entity lost in state store
-    - [ ] Allow **replay of all items** - full state store loss
-  - [x] Snapshot
-    - [x] Create a **snapshot** of state store after specific timeframe (eg. every 1st day of each month)
+  - [ ] Replay
+      - [ ] Allow **replay of a single entity** back to a specific point in time
+      - [ ] Allow **full replay of a single entity** - specific entity lost in state store
+      - [ ] Allow **replay of all items** - full state store loss
 - [ ] Integration with EventBridge
 
 
