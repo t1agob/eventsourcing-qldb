@@ -397,5 +397,76 @@ export class AdsStack extends cdk.Stack {
       }),
       targets: [lambdaTarget]
     });
+
+    // Replay DynamoDB
+    const replayTable = new dynamodb.Table(this, 'ReplayTable', {
+      partitionKey: { name: 'id', type: AttributeType.STRING },
+      removalPolicy: RemovalPolicy.DESTROY
+    });
+
+    replayTable.addGlobalSecondaryIndex({
+      indexName: "publisherId-adId-index",
+      partitionKey: {
+        name: "publisherId",
+        type: AttributeType.STRING
+      },
+      sortKey: {
+        name: "adId",
+        type: AttributeType.STRING
+      }
+    });
+
+    // replay Lambda Role
+    const replayRole = new Role(this, "adstack-lambda-replay-dynamo-access", {
+      assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
+      roleName: "adstack-lambda-replay-dynamo-access",
+    });
+
+    replayRole.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName("AWSLambdaFullAccess")
+    );
+    replayRole.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonDynamoDBFullAccess")
+    );
+    replayRole.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName("AmazonQLDBFullAccess")
+    );
+
+    // Replay LAMBDA
+    const replayHandler = new Function(this, "ReplayHandler", {
+      runtime: Runtime.NODEJS_12_X,
+      code: Code.fromAsset(
+        "../backend/src/ReplayAPI/.serverless/replayapi.zip"
+      ),
+      handler: "handler.handler",
+      role: replayRole,
+      timeout: Duration.minutes(3),
+      environment: {
+        tableName: replayTable.tableName
+      }
+    });
+
+    // Replay APIs
+    const replayApi = new RestApi(this, "ReplayAPI", {
+      restApiName: "Ads Replay API",
+      description: "This API allows operations team to Ads to another state store - dynamodb - for troubleshooting or test purposes.",
+    });
+
+    const replayIntegration = new LambdaIntegration(replayHandler);
+    replayApi.root.addMethod("GET", replayIntegration, {
+      requestParameters: {
+        "method.request.querystring.startDateTime": false,
+        "method.request.querystring.endDateTime": false,
+      },
+    });
+
+    const replayEntityResource = replayApi.root.addResource("id").addResource("{id}");
+    
+    replayEntityResource.addMethod("GET", replayIntegration, {
+      requestParameters: {
+        "method.request.querystring.startDateTime": false,
+        "method.request.querystring.endDateTime": false,
+      },
+    });
   }
 }
