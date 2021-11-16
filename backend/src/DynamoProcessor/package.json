@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "aws-kinesis-agg": "^4.1.2",
-    "aws-sdk": "^2.769.0",
+    "aws-sdk": "^2.814.0",
     "ion-js": "^4.0.1",
     "source-map-support": "^0.5.10"
   },
